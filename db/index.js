@@ -83,14 +83,22 @@ async function getOpenReports() {
  * Make sure to remove the password from the report object
  * before returning it.
  */
-async function createReport(reportFields) {
+async function createReport({title, location, description, password}) {
   // Get all of the fields from the passed in object
-
+  
   try {
     // insert the correct fields into the reports table
+    const { rows: [ report ] } = await client.query(`
+      INSERT INTO reports(title, location, description, password)
+      VALUES($1, $2, $3, $4)
+      RETURNING *;
+    `, [title, location, description, password])
     // remember to return the new row from the query
     // remove the password from the returned row
+    delete report.password
     // return the new report
+    console.log(report);
+    return report
   } catch (error) {
     throw error;
   }
@@ -113,7 +121,13 @@ async function createReport(reportFields) {
 async function _getReport(reportId) {
   try {
     // SELECT the report with id equal to reportId
+    const { rows: [report]} = await client.query(`
+      SELECT *
+      FROM reports
+      WHERE id=${reportId}
+    `);
     // return the report
+    return report
   } catch (error) {
     throw error;
   }
@@ -131,10 +145,35 @@ async function _getReport(reportId) {
 async function closeReport(reportId, password) {
   try {
     // First, actually grab the report with that id
+    const report = await _getReport(reportId);
+    console.log(report);
     // If it doesn't exist, throw an error with a useful message
+    if (report === undefined) {
+      console.log('reportnotfound')
+      throw new Error('No report found matching that ID')
+    }
     // If the passwords don't match, throw an error
+    if (report.password !== password) {
+      throw {
+        name: 'PasswordsDontMatch',
+        message: 'Wrong password!'
+      }
+    }
     // If it has already been closed, throw an error with a useful message
+    if (!report.isOpen) {
+      throw {
+        name: 'AlreadyClosed',
+        message: 'Report already closed'
+      }
+    }
     // Finally, update the report if there are no failures, as above
+    if (report && report.password === password) {
+      report.isOpen = false;
+      throw {
+        name: 'Closed',
+        message: 'Report now closed'
+      }
+    }
     // Return a message stating that the report has been closed
   } catch (error) {
     throw error;
@@ -170,4 +209,4 @@ async function createReportComment(reportId, commentFields) {
 }
 
 // export the client and all database functions below
-module.exports = { client, getOpenReports };
+module.exports = { client, getOpenReports, createReport, _getReport, closeReport };

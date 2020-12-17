@@ -34,7 +34,7 @@ describe("Database", () => {
         });
         reportIdToCreate = testReport.id;
       });
-      it.only("Returns an object", async () => {
+      it("Returns an object", async () => {
         expect(typeof testReport).toBe("object");
       });
       it("Does NOT return the password", async () => {
