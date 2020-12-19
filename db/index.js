@@ -28,16 +28,6 @@ async function getOpenReports() {
       WHERE reports."isOpen" = 'true'
     `);
 
-    // const allReports = await Promise.all(
-    //   reports.filter((report) => {
-    //     return report.isOpen;
-    //   })
-    // );
-
-    // const selectValues = allReports
-    //   .map((_, index) => `$${index + 1}`)
-    //   .join(',');
-
     // then load the comments only for those reports, using a
     // WHERE "reportId" IN () clause
     const { rows: comments } = await client.query(
@@ -65,19 +55,6 @@ async function getOpenReports() {
     );
 
     console.log('the comments are:', response);
-
-    // allReports.map((report) => {
-    //   report.comments = [];
-    //   comments.map((comment) => {
-    //     if (comment.reportId === report.id) {
-    //       report.comments.push(comment);
-    //     }
-    //   });
-    //   if (Date.parse(report.expirationDate) < new Date()) {
-    //     report.isExpired = true;
-    //   }
-    //   delete report.password;
-    // });
 
     reports.forEach((report) => {
       report.comments = comments.filter((comment) => {
@@ -182,8 +159,7 @@ async function closeReport(reportId, password) {
   try {
     // First, actually grab the report with that id
     const report = await _getReport(reportId);
-    console.log(report);
-    // console.log('Inside closeReport:', report);
+ 
     // If it doesn't exist, throw an error with a useful message
     if (!report) {
       throw Error('Report does not exist with that id');
@@ -200,13 +176,7 @@ async function closeReport(reportId, password) {
       throw Error('This report has already been closed');
     }
     // // Finally, update the report if there are no failures, as above
-    // if (report && report.password === password) {
-    //   report.isOpen = false;
-    //   throw {
-    //     name: 'Closed',
-    //     message: 'Report now closed',
-    //   };
-    // }
+  
     await client.query(
       `
       UPDATE reports
@@ -235,16 +205,53 @@ async function closeReport(reportId, password) {
  */
 async function createReportComment(reportId, commentFields) {
   // read off the content from the commentFields
+  
+
+  console.log("the comment fields are:", commentFields)
 
   try {
     // grab the report we are going to be commenting on
+    const activeReport = await _getReport(reportId)
+
     // if it wasn't found, throw an error saying so
+    if (!activeReport) {
+      throw Error('That report does not exist, no comment has been made')
+    }
     // if it is not open, throw an error saying so
+    if (!activeReport.isOpen) {
+      throw Error('That report has been closed, no comment has been made')
+    }
     // if the current date is past the expiration, throw an error saying so
     // you can use Date.parse(report.expirationDate) < new Date() to check
+    if (Date.parse(activeReport.expirationDate) < new Date()) {
+      throw Error('The discussion time on this report has expired, no comment has been made')
+    }
+
     // all go: insert a comment
     // then update the expiration date to a day from now
     // finally, return the comment
+
+    const { rows: [comment]} = await client.query(
+      `
+      INSERT INTO comments("reportId", content)
+      VALUES ($1, $2)
+      RETURNING *;`,
+      [reportId, commentFields.content]
+    );
+
+    await client.query(
+      `
+      UPDATE reports
+      SET "expirationDate" = CURRENT_TIMESTAMP + interval '1 day'
+      WHERE id = $1
+      RETURNING *;
+      `, [reportId]
+    );
+    console.log("The new comment is:", comment)
+    
+    return comment;
+
+
   } catch (error) {
     throw error;
   }
