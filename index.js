@@ -1,7 +1,8 @@
 // Use the dotenv package, to create environment variables
+require('dotenv').config();
 
 // Create a constant variable, PORT, based on what's in process.env.PORT or fallback to 3000
-const PORT = process.env.PORT || 3000;
+const {PORT = 3000} = process.env.PORT;
 console.log("the port is:", PORT);
 
 // Import express, and create a server
@@ -24,11 +25,11 @@ server.use(cors());
 server.use(bodyParser.json());
 
 // Have the server use your api router with prefix '/api'
-const apiRouter = require('./api/index');
+const apiRouter = require('./api');
 server.use('/api', apiRouter);
 
 // Import the client from your db/index.js
-const client = require('./db/index');
+const {client} = require('./db');
 
 // Create custom 404 handler that sets the status code to 404.
 server.use( (req, res, next) => {
@@ -43,7 +44,9 @@ server.use((err, req, res, next) => {
 
 // Start the server listening on port PORT
 // On success, connect to the database
+
+
 server.listen(PORT, () => {
     console.log("the server is up");
-    server.connect(client);
+    client.connect();
 })
