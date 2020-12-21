@@ -41,7 +41,18 @@ apiRouter.get('/reports', async (req, res, next) => {
  * - on success, it should send back the object returned by createReport
  * - on caught error, call next(error)
  */
-
+apiRouter.post('/reports', async (req, res, next) => {
+    try {
+        const newReport = await createReport(req.body);
+        
+        res.send({
+            newReport
+        });
+    } catch(error){
+        next(error)
+    }
+    
+}) 
 /**
  * Set up a DELETE request for /reports/:reportId
  *
